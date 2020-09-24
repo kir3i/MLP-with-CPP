@@ -21,7 +21,7 @@ public:
 		// random number generator 정의
 		random_device rd;
 		mt19937 e2(rd());
-		uniform_real_distribution<> dist(-10, 10);
+		uniform_real_distribution<> dist(-1, 1);
 
 		// random number로 weight 초기화
 		weights.resize(input_dim + 1);	// 외부엔 보이지 않는 weight 하나 추가
@@ -45,12 +45,19 @@ public:
 	}
 
 	void print_weights() {
-		cout << "weights\n";
+		cout << "weights: ";
 		for (const double &w : weights) {
 			cout << w << " ";
 		}
 		cout << "\n";
 	}
+
+	void print_linear_function() {
+		cout << "직선의 방정식: x2 = ";
+		cout << (weights[0] / weights[1] > 0 ? "-" : "") << abs(weights[0] / weights[1]) << " * x1";
+		cout << (weights[2] / weights[1] > 0 ? " - " : " + ") << abs(weights[2] / weights[1]) << "\n";
+	}
+
 	// 활성화 함수
 	double activate(double in) {
 		// Hard Limiting
@@ -102,37 +109,7 @@ public:
 		
 		return ok;
 	}
-/*
-	// 테스트 결과를 출력하면서 테스트를 수행한다.
-	// 반환값: 틀린 케이스 개수를 리턴한다.
-	int test_ANDgate_print() {
-		int ret = 0;	// 틀린 케이스(WA) 개수
 
-		// AND gate를 테스트하기 위한 input과 answer 정의
-		vector<double> test_input[4] = { {1, 0, 0}, {1, 0, 1}, {1, 1, 0}, {1, 1, 1} };
-		int ans[4] = { 0, 0, 0, 1 };
-
-		// test 수행 및 결과 출력
-		for (int i = 0; i < 4; i++) {
-			double result = run(test_input[i]);	// 실행 결과
-			// 실행 결과 출력
-			cout << test_input[i][1] << " " << test_input[i][2] << " --> ";
-			cout << result;
-
-			// 실행 결과가 틀린 경우
-			if (ans[i] != result) {
-				ret++;				// 1 증가
-				cout << " == WA";	// 틀린 케이스(WA)임을 표시
-			}
-			cout << "\n";
-		}
-		// 직선의 방정식 출력
-		cout << "직선의 방정식: x2 = ";
-		cout << (weights[1] / weights[2] > 0 ? "-" : "") << abs(weights[1] / weights[2]) << " * x1";
-		cout << (weights[0] / weights[2] > 0 ? " - " : " + ") << abs(weights[0] / weights[2]) << "\n";
-		return ret;
-	}
-*/
 private:
 	int input_dim = 0;				// input 차원
 	double learning_rate;
@@ -145,7 +122,7 @@ int main(void) {
 
 	int N = 2;	//cin >> N;
 	if (N <= 0)	return 0;
-	double lr = 0.3;
+	double lr = 0.7;
 
 	// Perceptron 생성
 	Perceptron p = Perceptron(N, lr);
@@ -169,9 +146,10 @@ int main(void) {
 	*/
 	for (int ok = 0, epoch = 0; ok < x.size(); epoch++) {
 		cout << "epoch: " << epoch << "\n";
-		ok = p.run(x, target);
 		p.print_weights();
-		cout << "정답률: " << ok << "/" << x.size() << "\n";
+		p.print_linear_function();
+		ok = p.run(x, target);
+		cout << "정답률: " << ok << "/" << x.size() << "\n\n";
 	}
 	return 0;
 }
