@@ -24,7 +24,7 @@ public:
 		uniform_real_distribution<> dist(-1, 1);
 
 		// random number로 weight 초기화
-		weights.resize(input_dim + 1);	// 외부엔 보이지 않는 weight 하나 추가
+		weights.resize(input_dim + 1);	// 외부엔 보이지 않는 weight 하나 추가 (threshold)
 		for (int i = 0; i < input_dim + 1; i++)
 			weights[i] = dist(e2);
 	}
@@ -69,8 +69,8 @@ public:
 
 	// Perceptron 연산(작동)
 	// input_vals: input값을 저장한 vector
-	// 반환값: 올바른 예측을 했다면 1, 아니라면 0
-	double run(const vector<double> &x) {
+	// 반환값: 연산 결과
+	double foward(const vector<double> &x) {
 		// 올바른 입력인지 체크
 		if (x.size() != input_dim) {
 			cout << "Perceptron의 input_dim과 input_vals.size()가 일치하지 않습니다.\n";
@@ -84,27 +84,32 @@ public:
 		for (int i = 0; i < input_dim; i++)
 			result += x[i] * weights[i];
 		result += weights[input_dim];	// Threashold 값
-
+		cout << result << "\n";
 		// activation function
 		result = activate(result);
 		
 		return result;
 	}
 
+	void update_weight(const vector<double> &x, const double &y, const double &target) {
+		for (int i = 0; i < input_dim; i++)
+			weights[i] += learning_rate * (target - y)*x[i];
+		weights[input_dim] += learning_rate * (target - y);
+	}
+
 	//맞은 case 개수 리턴
 	int run(const vector<vector<double>> &input, const vector<double> &target) {
 		if (input.size() != target.size()) {
-			cout << "올바르지 않은 입력입니다.";
+			cout << "input과 target의 개수가 일치하지 않습니다.\n";
 			exit(-1);
 		}
 		int ok = 0;
+
 		for (int i = 0; i < input.size(); i++) {
-			int y = run(input[i]);
+			double y = foward(input[i]);
+			cout << y << " " << target[i] << " ============\n";
 			if (y == target[i]) ok++;
-			// weight update
-			for (int j = 0; j < input_dim; j++)
-				weights[j] += learning_rate * (target[i] - y) * input[i][j];
-			weights[input_dim] += learning_rate * (target[i] - y);
+			update_weight(input[i], y, target[i]);
 		}
 		
 		return ok;
@@ -119,32 +124,54 @@ private:
 
 // main 함수
 int main(void) {
+	const int AND = 1;
+	const int OR = 2;
+	const int XOR = 3;
 
 	int N = 2;	//cin >> N;
 	if (N <= 0)	return 0;
-	double lr = 0.7;
+	double lr;	
+	cout << "learning rate를 입력하세요: ";		cin >> lr;
+	int select = 0;
+	cout << "테스트할 gate를 고르세요\n";
+	cout << "1: AND, 2: OR, 3: XOR\n";
+	cout << "입력: ";	cin >> select;
 
 	// Perceptron 생성
 	Perceptron p = Perceptron(N, lr);
 
 	//input 
 	vector<vector<double>> x = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
-	
-	//AND gate
-	vector<double> target = { {0}, {0}, {0}, {1} };
+	vector<double> target;
+	switch (select) {
+	case AND:
+		target = { {0}, {0}, {0}, {1} };
+		break;
+	case OR:
+		target = { {0}, {1}, {1}, {1} };
+		break;
+	case XOR:
+		target = { {0}, {1}, {1}, {0} };
+		break;
+	default:
+		cout << "Gate를 잘못 선택했습니다.\n";
+		exit(-1);
+	}
+
 	//test
 	/*
 	for (int ok = 0, epoch = 0; ok < x.size(); epoch++) {
 		ok = 0;
 		cout << "epoch: " << epoch << "\n";
 		for (int i = 0; i < x.size(); i++)
-			ok += ((target[i] == p.run(x[i]))? 1: 0);
+			ok += ((target[i] == p.forward(x[i]))? 1: 0);
 		p.weight_random_initialize();
 		
 		cout << "정답률: " << ok << "/" << x.size() << "\n";
 	}
 	*/
-	for (int ok = 0, epoch = 0; ok < x.size(); epoch++) {
+	// test
+	for (int ok = 0, epoch = 1; ok < x.size(); epoch++) {
 		cout << "epoch: " << epoch << "\n";
 		p.print_weights();
 		p.print_linear_function();
