@@ -44,6 +44,13 @@ public:
 			weights[i] = w[i];
 	}
 
+	void print_weights() {
+		cout << "weights\n";
+		for (const double &w : weights) {
+			cout << w << " ";
+		}
+		cout << "\n";
+	}
 	// 활성화 함수
 	double activate(double in) {
 		// Hard Limiting
@@ -56,7 +63,7 @@ public:
 	// Perceptron 연산(작동)
 	// input_vals: input값을 저장한 vector
 	// 반환값: 올바른 예측을 했다면 1, 아니라면 0
-	int run(const vector<double> &x, const double &target) {
+	double run(const vector<double> &x) {
 		// 올바른 입력인지 체크
 		if (x.size() != input_dim) {
 			cout << "Perceptron의 input_dim과 input_vals.size()가 일치하지 않습니다.\n";
@@ -74,7 +81,26 @@ public:
 		// activation function
 		result = activate(result);
 		
-		return result == target? 1: 0;
+		return result;
+	}
+
+	//맞은 case 개수 리턴
+	int run(const vector<vector<double>> &input, const vector<double> &target) {
+		if (input.size() != target.size()) {
+			cout << "올바르지 않은 입력입니다.";
+			exit(-1);
+		}
+		int ok = 0;
+		for (int i = 0; i < input.size(); i++) {
+			int y = run(input[i]);
+			if (y == target[i]) ok++;
+			// weight update
+			for (int j = 0; j < input_dim; j++)
+				weights[j] += learning_rate * (target[i] - y) * input[i][j];
+			weights[input_dim] += learning_rate * (target[i] - y);
+		}
+		
+		return ok;
 	}
 /*
 	// 테스트 결과를 출력하면서 테스트를 수행한다.
@@ -119,9 +145,10 @@ int main(void) {
 
 	int N = 2;	//cin >> N;
 	if (N <= 0)	return 0;
+	double lr = 0.3;
 
 	// Perceptron 생성
-	Perceptron p = Perceptron(N, 0.01);
+	Perceptron p = Perceptron(N, lr);
 
 	//input 
 	vector<vector<double>> x = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
@@ -129,15 +156,22 @@ int main(void) {
 	//AND gate
 	vector<double> target = { {0}, {0}, {0}, {1} };
 	//test
+	/*
 	for (int ok = 0, epoch = 0; ok < x.size(); epoch++) {
 		ok = 0;
 		cout << "epoch: " << epoch << "\n";
 		for (int i = 0; i < x.size(); i++)
-			ok += p.run(x[i], target[i]);
+			ok += ((target[i] == p.run(x[i]))? 1: 0);
 		p.weight_random_initialize();
 		
 		cout << "정답률: " << ok << "/" << x.size() << "\n";
 	}
-
+	*/
+	for (int ok = 0, epoch = 0; ok < x.size(); epoch++) {
+		cout << "epoch: " << epoch << "\n";
+		ok = p.run(x, target);
+		p.print_weights();
+		cout << "정답률: " << ok << "/" << x.size() << "\n";
+	}
 	return 0;
 }
