@@ -97,6 +97,11 @@ public:
 		weights[input_dim] += learning_rate * (target - y);
 	}
 
+	void update_weight(const vector<vector<double>> &input, const vector<double> &y, const vector<double> &target) {
+		for (int i = 0; i < input.size(); i++)
+			update_weight(input[i], y[i], target[i]);
+	}
+
 	//맞은 case 개수 리턴
 	int run(const vector<vector<double>> &input, const vector<double> &target) {
 		if (input.size() != target.size()) {
@@ -104,14 +109,14 @@ public:
 			exit(-1);
 		}
 		int ok = 0;
-
+		vector<double> y(input.size());
 		for (int i = 0; i < input.size(); i++) {
-			double y = foward(input[i]);
-			cout << y << " " << target[i] << " ============\n";
-			if (y == target[i]) ok++;
-			update_weight(input[i], y, target[i]);
+			y[i] = foward(input[i]);
+			cout << y[i] << " " << target[i] << " ============\n";
+			if (y[i] == target[i]) ok++;
+			//update_weight(input[i], y[i], target[i]);
 		}
-		
+		update_weight(input, y, target);
 		return ok;
 	}
 
