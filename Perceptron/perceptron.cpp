@@ -84,7 +84,6 @@ public:
 		for (int i = 0; i < input_dim; i++)
 			result += x[i] * weights[i];
 		result += weights[input_dim];	// Threashold 값
-		cout << result << "\n";
 		// activation function
 		result = activate(result);
 		
@@ -102,22 +101,21 @@ public:
 			update_weight(input[i], y[i], target[i]);
 	}
 
-	//맞은 case 개수 리턴
-	int run(const vector<vector<double>> &input, const vector<double> &target) {
+	//error 리턴
+	double run(const vector<vector<double>> &input, const vector<double> &target) {
 		if (input.size() != target.size()) {
 			cout << "input과 target의 개수가 일치하지 않습니다.\n";
 			exit(-1);
 		}
-		int ok = 0;
+		double loss = 0;
 		vector<double> y(input.size());
 		for (int i = 0; i < input.size(); i++) {
 			y[i] = foward(input[i]);
-			cout << y[i] << " " << target[i] << " ============\n";
-			if (y[i] == target[i]) ok++;
+			loss += (target[i] - y[i]) * (target[i] - y[i]) / 2;
 			//update_weight(input[i], y[i], target[i]);
 		}
 		update_weight(input, y, target);
-		return ok;
+		return loss;
 	}
 
 private:
@@ -176,12 +174,14 @@ int main(void) {
 	}
 	*/
 	// test
-	for (int ok = 0, epoch = 1; ok < x.size(); epoch++) {
+	cout << "\n====================실행결과====================\n";
+	double loss = 1;
+	for (int epoch = 1; loss != 0 ; epoch++) {
 		cout << "epoch: " << epoch << "\n";
 		p.print_weights();
 		p.print_linear_function();
-		ok = p.run(x, target);
-		cout << "정답률: " << ok << "/" << x.size() << "\n\n";
+		loss = p.run(x, target);
+		cout << "loss: " << loss << "\n\n";
 	}
 	return 0;
 }
