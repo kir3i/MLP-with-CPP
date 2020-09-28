@@ -3,6 +3,7 @@
 #include <iostream>
 #include <random>
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
@@ -60,10 +61,20 @@ public:
 		if (input_dim != 2)
 			return;
 
-		//직선의 방정식 출력
+		// 직선의 방정식 출력
 		cout << "직선의 방정식: x2 = ";
 		cout << (weights[0] / weights[1] > 0 ? "-" : "") << abs(weights[0] / weights[1]) << " * x1";
 		cout << (weights[2] / weights[1] > 0 ? " - " : " + ") << abs(weights[2] / weights[1]) << "\n";
+	}
+
+	// 직선의 방정식을 파일로 저장한다.
+	void write_linear_function(ofstream &outFile) {
+		// 입력 차원 체크
+		if (input_dim != 2)
+			return;
+
+		// 직선의 방정식 저장
+		outFile << (-1 * weights[0] / weights[1]) << " " << (-1 * weights[2] / weights[1]) << "\n";
 	}
 
 	// 활성화 함수
@@ -163,9 +174,11 @@ int main(void) {
 	cout << "테스트할 gate를 고르세요\n";
 	cout << "1: AND, 2: OR, 3: XOR\n";
 	cout << "입력: ";	cin >> select;
+	string filename;
 
 	// Perceptron 생성
 	Perceptron p = Perceptron(N, lr);
+	
 
 	//테스트할 gate에 따른 input, target 설정
 	vector<vector<double>> x = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
@@ -173,12 +186,15 @@ int main(void) {
 	switch (select) {
 	case AND:
 		target = { {0}, {0}, {0}, {1} };
+		filename = "AND";
 		break;
 	case OR:
 		target = { {0}, {1}, {1}, {1} };
+		filename = "OR";
 		break;
 	case XOR:
 		target = { {0}, {1}, {1}, {0} };
+		filename = "XOR";
 		break;
 	default:
 		cout << "Gate를 잘못 선택했습니다.\n";
@@ -188,16 +204,18 @@ int main(void) {
 	// 테스트 수행
 	cout << "\n====================실행결과====================\n";
 	double loss = 1;
+	ofstream lineFile(filename + ".txt");
+	ofstream lossFile(filename + "_loss.txt");
 	for (int epoch = 1; loss != 0 ; epoch++) {
 		cout << "epoch: " << epoch << "\n";
 		p.print_weights();					// weight 출력
 		p.print_linear_function();			// 직선의 방정식 출력
+		p.write_linear_function(lineFile);	// 직선의 방정식 저장
 		loss = p.run(x, target);			// perceptron 연산
-		cout << "loss: " << loss << "\n\n";	//loss 출력
+		cout << "loss: " << loss << "\n\n";	// loss 출력
+		lossFile << loss << "\n";			// loss 저장
 	}
+	lineFile.close();
+	lossFile.close();
 	return 0;
-
-	//TODO
-	// 1. 각종 그래프 그리고 분석
-	// 현재까지는 lr = 0.7이 빠른 수렴도를 보임.
 }
