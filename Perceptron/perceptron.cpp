@@ -178,7 +178,7 @@ int main(void) {
 	string filename;
 
 	// Perceptron 생성
-//	Perceptron p = Perceptron(N, lr);
+	Perceptron p = Perceptron(N, lr);
 	
 
 	//테스트할 gate에 따른 input, target 설정
@@ -204,33 +204,24 @@ int main(void) {
 
 	// 테스트 수행
 	cout << "\n====================실행결과====================\n";
-	
-	ofstream epochFile(filename + "_lr=" + to_string(lr) + "_epoch.txt");
-//	ofstream lineFile(filename + ".txt");
-//	ofstream lossFile(filename + "_loss.txt");
-	for (int i = 0; i < 1000000; i++) {
-		Perceptron p = Perceptron(N, lr);
-		double loss = 1;
-		int epoch;
-		if (i%100000 == 0)
-			cout << i << "\n";
-		for (epoch = 1; loss != 0; epoch++) {
-			//cout << "epoch: " << epoch << "\n";
-			//p.print_weights();					// weight 출력
-			//p.print_linear_function();			// 직선의 방정식 출력
-			//p.write_linear_function(lineFile);	// 직선의 방정식 저장
-			loss = p.run(x, target);			// perceptron 연산
-	//		cout << "loss: " << loss << "\n\n";	// loss 출력
-	//		lossFile << loss << "\n";			// loss 저장
+	double loss = 1;
+	ofstream lineFile(filename + ".txt");
+	ofstream lossFile(filename + "_loss.txt");
+
+	for (int epoch = 1; loss != 0; epoch++) {
+		cout << "epoch: " << epoch << "\n";
+		p.print_weights();					// weight 출력
+		p.print_linear_function();			// 직선의 방정식 출력
+		p.write_linear_function(lineFile);	// 직선의 방정식 저장
+		loss = p.run(x, target);			// perceptron 연산
+		cout << "loss: " << loss << "\n\n";	// loss 출력
+		lossFile << loss << "\n";			// loss 저장
 			
-			// epoch가 10만회를 넘으면 정지
-			if (epoch == 100000)
-				break;
-		}
-		epochFile << epoch << "\n";
+		// epoch가 10만회를 넘으면 정지
+		if (epoch >= 100000)
+			break;
 	}
-	epochFile.close();
-//	lineFile.close();
-//	lossFile.close();
+	lineFile.close();
+	lossFile.close();
 	return 0;
 }
