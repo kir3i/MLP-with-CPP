@@ -9,6 +9,14 @@
 
 using namespace std;
 
+// Hard Limiting
+double hard_limiting(double x) {
+	if (x <= 0)
+		return 0;
+	else
+		return 1;
+}
+
 // Sigmoid 
 double Sigmoid(double x) {
 	return 1 / (1 + exp(-x));
@@ -17,6 +25,18 @@ double Sigmoid(double x) {
 // Sigmoid 도함수
 double SigmoidPrime(double x) {
 	return Sigmoid(x) * (1 - Sigmoid(x));
+}
+
+// Mean Squared Error
+double mean_squared_error(vector<double> y, vector<double> target) {
+	if (y.size() != target.size()) {
+		cout << "mse error: y.size() != target.size()\n";
+		exit(-1);
+	}
+	double rtn = 0;
+	for (int i = 0; i < y.size(); i++)
+		rtn += (target[i] - y[i]) * (target[i] - y[i]);
+	return rtn / 2;
 }
 
 // Perceptron class
@@ -117,7 +137,6 @@ public:
 	}
 
 	vector<double> update_weight(const vector<double> &x, const double &delta_bar) {
-		//prev_weights = weights;
 		delta = delta_bar * SigmoidPrime(net);
 		
 		// 다음 레이어에 넘겨줄 정보 계산
@@ -158,22 +177,12 @@ public:
 		return loss;
 	}
 
-	double get_delta() {
-		return delta;
-	}
-
-	vector<double> get_prev_weights() {
-		return prev_weights;
-	}
-
 private:
 	int input_dim = 0;				// input 차원
 	double learning_rate;			// learning_rate
 	vector<double> weights;			// perceptron의 weight 값
-	const static int THRESHOLD = 0;
 	double net;
 	double delta;
-	vector<double> prev_weights;
 
 	// weight를 원하는 값으로 설정한다.
 	// w: 설정하고자 하는 weight 값을 갖는 vector
@@ -192,14 +201,8 @@ private:
 
 	// 활성화 함수
 	double activate(double in) {
-		return Sigmoid(in);
-		/*
-		// Hard Limiting
-		if (in <= THRESHOLD)
-			return 0;
-		else
-			return 1;
-		*/
+		//return Sigmoid(in);
+		return hard_limiting(in);
 	}
 
 };
@@ -216,7 +219,9 @@ public:
 	
 	vector<double> forward(const vector<double> &x) {
 		if (x.size() != input_dim) {
-			cout << "Layer error: input.size() != input_dim\n";
+			cout << "Layer error: x.size() != input_dim\n";
+			cout << "input.size() == " << x.size() << "\n";
+			cout << "input_dim == " << input_dim << "\n";
 			exit(-1);
 		}
 
@@ -264,7 +269,6 @@ private:
 	int input_dim;
 	int output_dim;
 	double learning_rate;
-	double delta;
 };
 
 class Model {
@@ -296,7 +300,20 @@ public:
 		return rtn;
 	}
 
-	void run(const vector<double> &x, const vector<double> &target) {
+	void backward(const vector<double> &x, const vector<double> &y, const vector<double> &target) {
+		// 태초의 delta_bar
+		vector<double> delta_bar;
+		for (int i = 0; i < y.size(); i++)
+			delta_bar.push_back(-target[i] + y[i]);
+
+		// back propagation
+		for (int i = (int)layers.size() - 1; i >= 0; i--) {
+			delta_bar = layers[i].backward(x, delta_bar);
+		}
+	}
+
+	vector<double> run(const vector<double> &x, const vector<double> &target) {
+		
 		vector<double> y = forward(x);
 
 		if (y.size() != target.size()) {
@@ -304,30 +321,47 @@ public:
 			exit(-1);
 		}
 
-		// 태초의 delta_bar
-		vector<double> delta_bar;
-		for (int i = 0; i < y.size(); i++)
-			delta_bar.push_back(-target[i] + y[i]);
+		backward(x, y, target);
 
-		// back propagation
-		for (size_t i = layers.size() - 1; i >= 0; i--) {
-			delta_bar = layers[i].backward(x, delta_bar);
+		return y;
+	}
+
+	double run(const vector<vector<double>> &input, const vector<vector<double>> &target) {
+		if (input.size() != target.size()) {
+			cout << "Model error: input.size() != target.size()\n";
+			exit(-1);
 		}
+
+		double loss = 0;
+
+		for (int i = 0; i < input.size(); i++) {
+			vector<double> predict = run(input[i], target[i]);
+			loss += mean_squared_error(predict, target[i]);
+
+			//test
+			for (const auto &x : input[i])
+				cout << x << " ";
+			cout << " -> " << predict[0] << "\n";
+		}
+
+		return loss;
 	}
 
 private:
 	vector<Layer> layers;
 	double learning_rate;
 };
+
 // main 함수
 int main(void) {
 	const int AND = 1;
 	const int OR = 2;
 	const int XOR = 3;
+	const int DONUT = 4;
 
 	// 입력 차원을 2로 고정한다.
-	int N = 2;	//cin >> N;
-	if (N <= 0)	return 0;
+//	int N = 2;	//cin >> N;
+//	if (N <= 0)	return 0;
 
 	// learning rate 입력
 	double lr;	
@@ -340,37 +374,60 @@ int main(void) {
 	cout << "입력: ";	cin >> select;
 	string filename;
 
-	// Perceptron 생성
-	Perceptron p = Perceptron(N, lr);
-	
+
+
 
 	//테스트할 gate에 따른 input, target 설정
-	vector<vector<double>> x = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
-	vector<double> target;
+	vector<vector<double>> x;
+//	vector<double> target;
+	vector<vector<double>> target;
 	switch (select) {
 	case AND:
+		x = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
 		target = { {0}, {0}, {0}, {1} };
 		filename = "AND";
 		break;
 	case OR:
+		x = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
 		target = { {0}, {1}, {1}, {1} };
 		filename = "OR";
 		break;
 	case XOR:
+		x = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
 		target = { {0}, {1}, {1}, {0} };
 		filename = "XOR";
+		break;
+	case DONUT:
+		x = { {0, 0}, {0, 1}, {1, 0}, {1, 1}, {0.5, 1}, {1, 0.5}, {0, 0.5}, {0.5, 0}, {0.5, 0.5} };
+		target = { {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {1} };
+		filename = "DONUT";
 		break;
 	default:
 		cout << "Gate를 잘못 선택했습니다.\n";
 		exit(-1);
 	}
 
+
+	vector<int> layers_dim = { 2, 1 };
+	Model m = Model(x[0].size(), layers_dim, lr);
+
 	// 테스트 수행
 	cout << "\n====================실행결과====================\n";
 	double loss = 1;
+	for (int epoch = 1; loss > 0.01; epoch++) {
+		cout << "epoch: " << epoch << "\n";
+		loss = m.run(x, target);
+		cout << "loss: " << loss << "\n\n";	// loss 출력
+	}
+	
+
+/*
+
+	// Perceptron 생성
+	Perceptron p = Perceptron(x[0].size(), lr);
 //	ofstream lineFile(filename + ".txt");
 //	ofstream lossFile(filename + "_loss.txt");
-
+	double loss = 1;
 	for (int epoch = 1; loss > 0.1; epoch++) {
 		cout << "epoch: " << epoch << "\n";
 		p.print_weights();					// weight 출력
@@ -387,4 +444,5 @@ int main(void) {
 //	lineFile.close();
 //	lossFile.close();
 	return 0;
+*/
 }
