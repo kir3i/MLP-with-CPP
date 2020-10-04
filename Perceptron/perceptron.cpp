@@ -42,21 +42,6 @@ public:
 			weights[i] = dist(e2);
 	}
 
-	// weight를 원하는 값으로 설정한다.
-	// w: 설정하고자 하는 weight 값을 갖는 vector
-	void set_weights(const vector<double> &w) {
-
-		// 올바른 입력인지 체크
-		if (w.size() != input_dim) {
-			cout << "Perceptron의 input_dim과 w.size()가 일치하지 않습니다.\n";
-			return;
-		}
-
-		// 입력값을 weights로 복사
-		for (int i = 0; i < input_dim; i++)
-			weights[i] = w[i];
-	}
-
 	// weight를 출력한다.
 	void print_weights() {
 		cout << "weights: ";
@@ -89,22 +74,10 @@ public:
 		outFile << (-1 * weights[0] / weights[1]) << " " << (-1 * weights[2] / weights[1]) << "\n";
 	}
 
-	// 활성화 함수
-	double activate(double in) {
-		return Sigmoid(in);
-		/*
-		// Hard Limiting
-		if (in <= THRESHOLD)
-			return 0;
-		else
-			return 1;
-		*/
-	}
-
 	// forward 연산
 	// x: input값을 저장한 vector
 	// 반환값: 연산 결과
-	double foward(const vector<double> &x) {
+	double forward(const vector<double> &x) {
 		// 올바른 입력인지 체크
 		if (x.size() != input_dim) {
 			cout << "Perceptron의 input_dim과 input_vals.size()가 일치하지 않습니다.\n";
@@ -117,6 +90,9 @@ public:
 		for (int i = 0; i < input_dim; i++)
 			result += x[i] * weights[i];
 		result += weights[input_dim];	// Threashold 값
+
+		net = result;
+
 		// activation function
 		result = activate(result);
 		
@@ -128,7 +104,7 @@ public:
 	// x: input값을 저장한 vector, y: 결과값, target: 올바른 결과값
 	void update_weight(const vector<double> &x, const double &y, const double &target) {
 		for (int i = 0; i < input_dim; i++)
-			weights[i] += learning_rate * (target - y)*x[i];
+			weights[i] += learning_rate * (target - y) * x[i];
 		weights[input_dim] += learning_rate * (target - y);
 	}
 
@@ -138,6 +114,25 @@ public:
 	void update_weight(const vector<vector<double>> &input, const vector<double> &y, const vector<double> &target) {
 		for (int i = 0; i < input.size(); i++)
 			update_weight(input[i], y[i], target[i]);
+	}
+
+	vector<double> update_weight(const vector<double> &x, const double &delta_bar) {
+		//prev_weights = weights;
+		delta = delta_bar * SigmoidPrime(net);
+		
+		// 다음 레이어에 넘겨줄 정보 계산
+		vector<double> rtn;
+		for (int i = 0; i < input_dim; i++)
+			rtn.push_back(weights[i] * delta);
+
+		// weight 업데이트
+		for (int i = 0; i < input_dim; i++)
+			weights[i] += (-learning_rate * delta * x[i]);
+		
+		// threshold 업데이트
+		weights[input_dim] += (-learning_rate * delta);
+
+		return rtn;
 	}
 
 	// Perceptron 작동 (연산)
@@ -155,7 +150,7 @@ public:
 		vector<double> y(input.size());
 		// case마다 연산
 		for (int i = 0; i < input.size(); i++) {
-			y[i] = foward(input[i]);								// forward 연산
+			y[i] = forward(input[i]);					// forward 연산
 			loss += (target[i] - y[i]) * (target[i] - y[i]) / 2;	// mean squared error
 			//update_weight(input[i], y[i], target[i]);
 		}
@@ -163,32 +158,166 @@ public:
 		return loss;
 	}
 
+	double get_delta() {
+		return delta;
+	}
+
+	vector<double> get_prev_weights() {
+		return prev_weights;
+	}
+
 private:
 	int input_dim = 0;				// input 차원
 	double learning_rate;			// learning_rate
 	vector<double> weights;			// perceptron의 weight 값
 	const static int THRESHOLD = 0;
+	double net;
+	double delta;
+	vector<double> prev_weights;
+
+	// weight를 원하는 값으로 설정한다.
+	// w: 설정하고자 하는 weight 값을 갖는 vector
+	void set_weights(const vector<double> &w) {
+
+		// 올바른 입력인지 체크
+		if (w.size() != input_dim) {
+			cout << "Perceptron의 input_dim과 w.size()가 일치하지 않습니다.\n";
+			return;
+		}
+
+		// 입력값을 weights로 복사
+		for (int i = 0; i < input_dim; i++)
+			weights[i] = w[i];
+	}
+
+	// 활성화 함수
+	double activate(double in) {
+		return Sigmoid(in);
+		/*
+		// Hard Limiting
+		if (in <= THRESHOLD)
+			return 0;
+		else
+			return 1;
+		*/
+	}
+
 };
 
 class Layer {
 public:
 	Layer(int input_dim, int output_dim, double lr) {
+		this->input_dim = input_dim;
+		this->output_dim = output_dim;
+		this->learning_rate = lr;
 		for (int i = 0; i < output_dim; i++)
 			nodes.push_back(Perceptron(input_dim, lr));
 	}
+	
+	vector<double> forward(const vector<double> &x) {
+		if (x.size() != input_dim) {
+			cout << "Layer error: input.size() != input_dim\n";
+			exit(-1);
+		}
+
+		vector<double> rtn;
+		for (Perceptron &p : nodes)
+			rtn.push_back(p.forward(x));
+		return rtn;
+	}
+
+	// delta_bar: 현재 레이어 기준 노드 별 delta_bar 값
+	vector<double> backward(const vector<double> &x, const vector<double> &delta_bar) {
+		if (delta_bar.size() != output_dim) {
+			cout << "Layer error: delta_bar.size() != output_dim\n";
+			exit(-1);
+		}
+
+		// 다음 레이어를 위한 delta_bar
+		vector<double> rtn(input_dim, 0);
+
+		for (int i = 0; i < output_dim; i++) {
+			vector<double> update_delta = nodes[i].update_weight(x, delta_bar[i]);
+
+			// 다음 레이어를 위한 delta_bar 업데이트
+			for (int j=0; j<input_dim; j++)
+				rtn[j] += update_delta[j];
+		}
+
+		return rtn;
+	}
+
 	double run(const vector<vector<double>> &input, const vector<double> &target) {
-		for (Perceptron &p : nodes) {
-			double loss = p.run(input, target);
+		// 올바른 입력인지 체크
+		if (input.size() != target.size()) {
+			cout << "input과 target의 개수가 일치하지 않습니다.\n";
+			exit(-1);
+		}
+
+		for (int i = 0; i < input.size(); i++) {
+			forward(input[i]);
 		}
 	}
 
 private:
 	vector<Perceptron> nodes;
+	int input_dim;
+	int output_dim;
+	double learning_rate;
+	double delta;
 };
 
 class Model {
 public:
+	// input_dim: 입력 data의 차원
+	// layers_dim: 각 layer의 output_dim을 갖는 벡터
+	// lr: learning rate
+	Model(int input_dim, const vector<int> &layers_dim, double lr) {
+		if (layers_dim.size() == 0) {
+			cout << "Model error: layers_dim.size() == 0\n";
+			exit(-1);
+		}
 
+		this->learning_rate = lr;
+		layers.push_back(Layer(input_dim, layers_dim[0], lr));
+		for (int i = 1; i < layers_dim.size(); i++)
+			layers.push_back(Layer(layers_dim[i - 1], layers_dim[i], lr));
+	}
+
+	vector<double> forward(const vector<double> &x) {
+		vector<double> rtn;
+		vector<double> nx = x;
+		for (Layer &l : layers) {
+			rtn.clear();
+			rtn = l.forward(nx);
+			nx = rtn;
+		}
+
+		return rtn;
+	}
+
+	void run(const vector<double> &x, const vector<double> &target) {
+		vector<double> y = forward(x);
+
+		if (y.size() != target.size()) {
+			cout << "Model error: y.size() != target.size()\n";
+			exit(-1);
+		}
+
+		// 태초의 delta_bar
+		vector<double> delta_bar;
+		for (int i = 0; i < y.size(); i++)
+			delta_bar.push_back(-target[i] + y[i]);
+
+		// back propagation
+		for (size_t i = layers.size() - 1; i >= 0; i--) {
+			delta_bar = layers[i].backward(x, delta_bar);
+		}
+	}
+
+private:
+	vector<Layer> layers;
+	double learning_rate;
 };
 // main 함수
 int main(void) {
@@ -239,8 +368,8 @@ int main(void) {
 	// 테스트 수행
 	cout << "\n====================실행결과====================\n";
 	double loss = 1;
-	ofstream lineFile(filename + ".txt");
-	ofstream lossFile(filename + "_loss.txt");
+//	ofstream lineFile(filename + ".txt");
+//	ofstream lossFile(filename + "_loss.txt");
 
 	for (int epoch = 1; loss > 0.1; epoch++) {
 		cout << "epoch: " << epoch << "\n";
@@ -255,7 +384,7 @@ int main(void) {
 		if (epoch >= 100000)
 			break;
 	}
-	lineFile.close();
-	lossFile.close();
+//	lineFile.close();
+//	lossFile.close();
 	return 0;
 }
