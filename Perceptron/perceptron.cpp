@@ -5,8 +5,19 @@
 #include <vector>
 #include <fstream>
 #include <string>
+#include <cmath>
 
 using namespace std;
+
+// Sigmoid 
+double Sigmoid(double x) {
+	return 1 / (1 + exp(-x));
+}
+
+// Sigmoid 도함수
+double SigmoidPrime(double x) {
+	return Sigmoid(x) * (1 - Sigmoid(x));
+}
 
 // Perceptron class
 class Perceptron {
@@ -80,11 +91,14 @@ public:
 
 	// 활성화 함수
 	double activate(double in) {
+		return Sigmoid(in);
+		/*
 		// Hard Limiting
 		if (in <= THRESHOLD)
 			return 0;
 		else
 			return 1;
+		*/
 	}
 
 	// forward 연산
@@ -156,6 +170,26 @@ private:
 	const static int THRESHOLD = 0;
 };
 
+class Layer {
+public:
+	Layer(int input_dim, int output_dim, double lr) {
+		for (int i = 0; i < output_dim; i++)
+			nodes.push_back(Perceptron(input_dim, lr));
+	}
+	double run(const vector<vector<double>> &input, const vector<double> &target) {
+		for (Perceptron &p : nodes) {
+			double loss = p.run(input, target);
+		}
+	}
+
+private:
+	vector<Perceptron> nodes;
+};
+
+class Model {
+public:
+
+};
 // main 함수
 int main(void) {
 	const int AND = 1;
@@ -208,14 +242,14 @@ int main(void) {
 	ofstream lineFile(filename + ".txt");
 	ofstream lossFile(filename + "_loss.txt");
 
-	for (int epoch = 1; loss != 0; epoch++) {
+	for (int epoch = 1; loss > 0.1; epoch++) {
 		cout << "epoch: " << epoch << "\n";
 		p.print_weights();					// weight 출력
 		p.print_linear_function();			// 직선의 방정식 출력
-		p.write_linear_function(lineFile);	// 직선의 방정식 저장
+		//p.write_linear_function(lineFile);	// 직선의 방정식 저장
 		loss = p.run(x, target);			// perceptron 연산
 		cout << "loss: " << loss << "\n\n";	// loss 출력
-		lossFile << loss << "\n";			// loss 저장
+		//lossFile << loss << "\n";			// loss 저장
 			
 		// epoch가 10만회를 넘으면 정지
 		if (epoch >= 100000)
