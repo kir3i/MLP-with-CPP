@@ -50,6 +50,11 @@ public:
 		this->learning_rate = lr;			// learning_rate 초기화
 	}		
 
+	// weight를 반환한다.
+	vector<double> get_weights() {
+		return weights;
+	}
+	
 	// weight를 콘솔에 출력한다.
 	void print_weights() {
 		cout << "weights: ";
@@ -60,7 +65,7 @@ public:
 	}
 
 	// weight에 따른 직선의 방정식을 출력한다.
-	// (2차원 입력에만 유효함)
+	// 2차원 입력에만 유효
 	void print_linear_function() {
 		// 입력 차원 체크
 		if (input_dim != 2)
@@ -73,6 +78,7 @@ public:
 	}
 
 	// 직선의 방정식을 파일로 저장한다.
+	// 2차원 입력에만 유효
 	void write_linear_function(ofstream &outFile) {
 		// 입력 차원 체크
 		if (input_dim != 2)
@@ -231,6 +237,39 @@ public:
 			nodes.push_back(Perceptron(input_dim, lr));
 	}
 	
+	// Layer에 속하는 node들의 weight를 file에 기록
+	// outFile: weight를 저장할 file
+	// 저장형식
+	// - Layer 별로 하나의 행렬을 생성한다.
+	// - 각 row는 한 노드의 weight를 나타낸다. bias는 제일 마지막 요소이다.
+	void write_weight(ofstream &outFile) {
+		for (Perceptron &n : nodes) {
+			for (const double &w : n.get_weights())
+				outFile << w << " ";
+			outFile << "\n";
+		}
+	}
+
+	// layer에 속한 nodes들의 직선의 방정식을 콘솔에 출력한다.
+	void print_linear_function(const int &layer_num) {
+		for (int i = 0; i < nodes.size(); i++) {
+			cout << layer_num << "-" << i+1 << " ";
+			nodes[i].print_linear_function();
+		}
+	}
+
+	// layer에 속한 nodes들의 직선의 방정식을 file에 저장한다.
+	void write_linear_function(ofstream &outFile) {
+		for (Perceptron &n: nodes)
+			n.write_linear_function(outFile);
+		outFile << "\n";
+	}
+
+	// 직전 forward 연산에서 사용했던 input을 반환한다.
+	vector<double> get_prev_x() {
+		return prev_x;
+	}
+
 	// foward 연산
 	// x: layer에 들어온 입력
 	// 반환값: forward 연산 결과
@@ -305,6 +344,51 @@ public:
 			layers.push_back(Layer(layers_dim[i - 1], layers_dim[i], lr));
 	}
 
+	// Model의 각 Layer의 node들의 weight를 file에 기록한다.
+	// outFile: weight가 저장될 file
+	// 저장형식
+	// - Layer 별로 하나의 행렬을 생성한다.
+	// - 각 row는 한 노드의 weight를 나타낸다. bias는 제일 마지막 요소이다.
+	void write_weights(ofstream &outFile) {
+		for (int i = 0; i < layers.size(); i++) {
+			outFile << "Layer " << i+1 << "\n";
+			layers[i].write_weight(outFile);
+			outFile << "\n";
+		}
+	}
+
+	// model에 속한 layer들에 속한 각 node의 직선의 방정식을 콘솔에 출력한다.
+	// 출력형식: [layer 번호]-[node번호] 직선의 방정식: [직선의 방정식]
+	// layer번호와 node 번호 모두 1번부터 시작한다.
+	void print_linear_function() {
+		for (int i = 0; i < layers.size(); i++)
+			layers[i].print_linear_function(i);
+	}
+
+	// model에 속한 layer들에 속한 각 node의 직선의 방정식을 file에 저장한다.
+	// 각 epoch는 ","로 구분한다.
+	void write_linear_function(ofstream &outFile) {
+		for (Layer &l: layers)
+			l.write_linear_function(outFile);
+		outFile << ",";
+	}
+
+	// 각 입력의 hidden layer를 통한 이동을 출력한다.
+	// {2, 1}에 해당하는 모델에만 정상적으로 작동한다.
+	// x: model에 들어온 입력
+	void print_dot_moving(const vector<double> &x) {
+		// 올바르지 않은 호출
+		if (layers.size() != 2 || x.size() != 2)
+			return;
+
+		vector<double> in = layers[1].get_prev_x();
+		if (in.size() != 2) {
+			cout << "model error: print_dot_moving은 이차원 입력에만 작동하는 함수입니다.\n";
+			return;
+		}
+		cout << "(" << x[0] << ", " << x[1] << ") -> (" << in[0] << ", " << in[1] << ")\n";
+	}
+
 	// forward 연산
 	// x: model에 들어온 입력
 	// 반환값: forward 연산 결과
@@ -351,8 +435,9 @@ public:
 
 	// model 작동, 다수의 case에 대해서 학습
 	// x: model에 들어온 input, target: 정답 결과
+	// print: 해당 epoch에서 결과값 출력, dot_moving: 점 이동 결과 출력 ({2, 1} 모델에서만 작동)
 	// 반환값: 예측한 결과의 loss값
-	double run(const vector<vector<double>> &input, const vector<vector<double>> &target) {
+	double run(const vector<vector<double>> &input, const vector<vector<double>> &target, const bool &print=true, const bool &dot_moving=true) {
 		// 올바른 입력인지 체크
 		if (input.size() != target.size()) {
 			cout << "Model error: input.size() != target.size()\n";
@@ -367,13 +452,19 @@ public:
 			vector<double> predict = run(input[i], target[i]);	// 예측값 계산
 			loss += mean_squared_error(predict, target[i]);		// loss 계산
 
+			// 점 이동 결과 출력
+			if (dot_moving)
+				print_dot_moving(input[i]);
+
 			// 예측 결과 출력
-			for (const double &x : input[i])
-				cout << x << " ";
-			cout << " -> ";
-			for (const double &y: predict)
-				cout << y << " ";
-			cout << "\n";
+			if (print) {
+				for (const double &x : input[i])
+					cout << x << " ";
+				cout << " -> ";
+				for (const double &y: predict)
+					cout << y << " ";
+				cout << "\n";
+			}
 		}
 
 		return loss;
@@ -385,7 +476,7 @@ private:
 
 // main 함수
 int main(void) {
-	const double TOLERANCE = 0.01;
+	const double TOLERANCE = 0.001;
 	const int AND = 1;
 	const int OR = 2;
 	const int XOR = 3;
@@ -451,15 +542,30 @@ int main(void) {
 	// model 생성
 	Model m = Model(x[0].size(), layers_dim, lr);
 
+	// 각종 정보 기록할 file 정의
+	ofstream lossFile(filename + "_loss.txt");
+	ofstream lineFile(filename + "_line.txt");
+
 	// 테스트 수행
 	cout << "\n====================실행결과====================\n";
 	double loss = 1;
 	for (int epoch = 1; loss > TOLERANCE; epoch++) {
 		cout << "epoch: " << epoch << "\n";
 		loss = m.run(x, target);
-		cout << "loss: " << loss << "\n\n";	// loss 출력
-	}
+		if (epoch == 1 || epoch % 1000 == 0) {
+			ofstream weightFile(filename + "_weight_epoch_" + to_string(epoch)+".txt");
+			m.write_weights(weightFile);
+			weightFile.close();
+		}
+		m.print_linear_function();
+		m.write_linear_function(lineFile);
 
+		cout << "loss: " << loss << "\n\n";	// loss 출력
+		lossFile << loss << "\n";
+	}
+	
+	lossFile.close();
+	lineFile.close();
 	return 0;
 	
 	// test 결과
