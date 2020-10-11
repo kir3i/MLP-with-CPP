@@ -79,6 +79,7 @@ public:
 
 	// 직선의 방정식을 파일로 저장한다.
 	// 2차원 입력에만 유효
+	// outFile: 직선의 방정식을 출력할 파일
 	void write_linear_function(ofstream &outFile) {
 		// 입력 차원 체크
 		if (input_dim != 2)
@@ -114,25 +115,6 @@ public:
 		
 		return result;
 	}
-
-/*
-	// weight update(learning), 한 개의 case에 대해 업데이트한다.
-	// back propagation을 통해 weight를 갱신한다.
-	// x: input값을 저장한 vector, y: 결과값, target: 올바른 결과값
-	void update_weight(const vector<double> &x, const double &y, const double &target) {
-		for (int i = 0; i < input_dim; i++)
-			weights[i] += learning_rate * (target - y) * x[i];
-		weights[input_dim] += learning_rate * (target - y);
-	}
-
-	// weight update(learning), 여러 개의 case에 대해 업데이트한다.
-	// back propagation을 통해 weight를 갱신한다.
-	// x: input값을 저장한 vector, y: 결과값, target: 올바른 결과값
-	void update_weight(const vector<vector<double>> &input, const vector<double> &y, const vector<double> &target) {
-		for (int i = 0; i < input.size(); i++)
-			update_weight(input[i], y[i], target[i]);
-	}
-*/
 	
 	// weight update
 	// x: input값을 저장한 vector, delta_bar: 이전 layer에서 넘어온 delta_bar
@@ -155,30 +137,6 @@ public:
 
 		return rtn;
 	}
-/*
-	// Perceptron 작동 (연산)
-	// input: input값을 저장한 vector, target: 올바른 결과값
-	// 반환값: Perceptron 연산 결과에 따른 loss 값
-	double run(const vector<vector<double>> &input, const vector<double> &target) {
-		// 올바른 입력인지 체크
-		if (input.size() != target.size()) {
-			cout << "input과 target의 개수가 일치하지 않습니다.\n";
-			exit(-1);
-		}
-
-		// Perceptron 연산 시작
-		double loss = 0;
-		vector<double> y(input.size());
-		// case마다 연산
-		for (int i = 0; i < input.size(); i++) {
-			y[i] = forward(input[i]);					// forward 연산
-			loss += (target[i] - y[i]) * (target[i] - y[i]) / 2;	// mean squared error
-			//update_weight(input[i], y[i], target[i]);
-		}
-		update_weight(input, y, target);							// backward 연산
-		return loss;
-	}
-*/
 
 private:
 	int input_dim = 0;				// input 차원
@@ -186,21 +144,6 @@ private:
 	vector<double> weights;			// perceptron의 weight 값
 	double net;						// net값 (activation 함수 들어가기 전)
 	double delta;					// delta값, 이전 layer에서 넘어온 delta_bar로 계산
-/*
-	// weight를 원하는 값으로 설정한다.
-	// w: 설정하고자 하는 weight 값을 갖는 vector
-	void set_weights(const vector<double> &w) {
-		// 올바른 입력인지 체크
-		if (w.size() != input_dim) {
-			cout << "Perceptron의 input_dim과 w.size()가 일치하지 않습니다.\n";
-			return;
-		}
-
-		// 입력값을 weights로 복사
-		for (int i = 0; i < input_dim; i++)
-			weights[i] = w[i];
-	}
-*/
 	
 	// weight를 랜덤한 값으로 초기화한다.
 	void weight_random_initialize() {
@@ -217,7 +160,7 @@ private:
 
 	// 활성화 함수
 	double activate(double in) {
-		return Sigmoid(in);	// Sigmoid 함수 적용
+		return Sigmoid(in);		// Sigmoid 함수 적용
 	//	return hard_limiting(in);
 	}
 };
@@ -241,7 +184,7 @@ public:
 	// outFile: weight를 저장할 file
 	// 저장형식
 	// - Layer 별로 하나의 행렬을 생성한다.
-	// - 각 row는 한 노드의 weight를 나타낸다. bias는 제일 마지막 요소이다.
+	// - 각 row는 한 노드의 weight를 나타낸다. bias는 제일 마지막에 기록된다.
 	void write_weight(ofstream &outFile) {
 		for (Perceptron &n : nodes) {
 			for (const double &w : n.get_weights())
@@ -251,6 +194,8 @@ public:
 	}
 
 	// layer에 속한 nodes들의 직선의 방정식을 콘솔에 출력한다.
+	// 표시형식: [레이어 번호]-[노드 번호] 직선의 방정식: [직선의 방정식]
+	// layer_num: layer의 번호 (몇 번째 layer인지)
 	void print_linear_function(const int &layer_num) {
 		for (int i = 0; i < nodes.size(); i++) {
 			cout << layer_num << "-" << i+1 << " ";
@@ -259,6 +204,7 @@ public:
 	}
 
 	// layer에 속한 nodes들의 직선의 방정식을 file에 저장한다.
+	// outFile: 직선의 방정식을 저장할 파일
 	void write_linear_function(ofstream &outFile) {
 		for (Perceptron &n: nodes)
 			n.write_linear_function(outFile);
@@ -306,8 +252,8 @@ public:
 		// backward 연산 시작
 		vector<double> rtn(input_dim, 0);		// 다음 layer를 위한 delta_bar vector
 		
+		// layer에 속한 perceptron에 대해 delta_bar를 이용해 weight update
 		for (int i = 0; i < output_dim; i++) {
-			// layer에 속한 perceptron에 대해 delta_bar를 이용해 weight update
 			vector<double> update_delta = nodes[i].update_weight(prev_x, delta_bar[i]);
 
 			// 다음 layer를 위한 delta_bar 계산
@@ -367,26 +313,30 @@ public:
 
 	// model에 속한 layer들에 속한 각 node의 직선의 방정식을 file에 저장한다.
 	// 각 epoch는 ","로 구분한다.
+	// outfile: 직선의 방정식을 저장할 file
 	void write_linear_function(ofstream &outFile) {
 		for (Layer &l: layers)
 			l.write_linear_function(outFile);
 		outFile << ",";
 	}
 
-	// 각 입력의 hidden layer를 통한 이동을 출력한다.
+	// 각 입력의 hidden layer를 통한 이동을 file로 출력한다.
 	// {2, 1}에 해당하는 모델에만 정상적으로 작동한다.
-	// x: model에 들어온 입력
-	void print_dot_moving(const vector<double> &x) {
+	// x: model에 들어온 입력, outFile: 기록할 파일
+	// 각 epoch는 "\n\n"으로 구분한다.
+	// 위에서부터 (0, 0), (0, 1), (1, 0), (1, 1)이 이동한 점을 출력한다.
+	void write_dot_moving(const vector<double> &x, ofstream &outFile) {
 		// 올바르지 않은 호출
 		if (layers.size() != 2 || x.size() != 2)
 			return;
 
+		// 두 번째 레이어의 입력을 체크한다.
 		vector<double> in = layers[1].get_prev_x();
 		if (in.size() != 2) {
-			cout << "model error: print_dot_moving은 이차원 입력에만 작동하는 함수입니다.\n";
+			cout << "model error: write_dot_moving은 이차원 입력에만 작동하는 함수입니다.\n";
 			return;
 		}
-		cout << "(" << x[0] << ", " << x[1] << ") -> (" << in[0] << ", " << in[1] << ")\n";
+		outFile << in[0] << " " << in[1] << "\n";
 	}
 
 	// forward 연산
@@ -435,9 +385,10 @@ public:
 
 	// model 작동, 다수의 case에 대해서 학습
 	// x: model에 들어온 input, target: 정답 결과
+	// outFile: dot_moving을 출력할 파일
 	// print: 해당 epoch에서 결과값 출력, dot_moving: 점 이동 결과 출력 ({2, 1} 모델에서만 작동)
 	// 반환값: 예측한 결과의 loss값
-	double run(const vector<vector<double>> &input, const vector<vector<double>> &target, const bool &print=true, const bool &dot_moving=true) {
+	double run(const vector<vector<double>> &input, const vector<vector<double>> &target, ofstream &outFile, const bool &print=true, const bool &dot_moving=true) {
 		// 올바른 입력인지 체크
 		if (input.size() != target.size()) {
 			cout << "Model error: input.size() != target.size()\n";
@@ -454,7 +405,7 @@ public:
 
 			// 점 이동 결과 출력
 			if (dot_moving)
-				print_dot_moving(input[i]);
+				write_dot_moving(input[i], outFile);
 
 			// 예측 결과 출력
 			if (print) {
@@ -466,7 +417,9 @@ public:
 				cout << "\n";
 			}
 		}
+		outFile << "\n";
 
+		// loss 리턴
 		return loss;
 	}
 
@@ -476,11 +429,11 @@ private:
 
 // main 함수
 int main(void) {
-	const double TOLERANCE = 0.001;
-	const int AND = 1;
-	const int OR = 2;
-	const int XOR = 3;
-	const int DONUT = 4;
+	const double TOLERANCE = 0.001;		// tolerance
+	const int AND = 1;					// AND 
+	const int OR = 2;					// OR
+	const int XOR = 3;					// XOR
+	const int DONUT = 4;				// DONUT
 
 	// 테스트할 data 선택
 	int select = 0;
@@ -518,7 +471,6 @@ int main(void) {
 		exit(-1);
 	}
 
-
 	// layer 수 설정
 	int layer_num = 0;
 	cout << "layer 수를 정하세요: ";	cin >> layer_num;
@@ -545,34 +497,34 @@ int main(void) {
 	// 각종 정보 기록할 file 정의
 	ofstream lossFile(filename + "_loss.txt");
 	ofstream lineFile(filename + "_line.txt");
+	ofstream weightFile(filename + "_weight.txt");
+	ofstream dotFile(filename + "_dot.txt");
 
 	// 테스트 수행
 	cout << "\n====================실행결과====================\n";
-	double loss = 1;
+	double loss = 1;	// loss값
+
+	// model 학습 시작
 	for (int epoch = 1; loss > TOLERANCE; epoch++) {
 		cout << "epoch: " << epoch << "\n";
-		loss = m.run(x, target);
-		if (epoch == 1 || epoch % 1000 == 0) {
-			ofstream weightFile(filename + "_weight_epoch_" + to_string(epoch)+".txt");
-			m.write_weights(weightFile);
-			weightFile.close();
-		}
+		loss = m.run(x, target, dotFile, false, false);	// 학습 수행
+
+		// 직선 정보 출력
 		m.print_linear_function();
 		m.write_linear_function(lineFile);
 
-		cout << "loss: " << loss << "\n\n";	// loss 출력
+		// loss 출력
+		cout << "loss: " << loss << "\n\n";
 		lossFile << loss << "\n";
 	}
-	
+
+	// 최종 weight 저장
+	m.write_weights(weightFile);
+
 	lossFile.close();
 	lineFile.close();
+	weightFile.close();
+	dotFile.close();
+
 	return 0;
-	
-	// test 결과
-	// 1. {4, 1} + lr = 0.5로 했을 때 모두 성공함. 도넛은 약 5천회
-	// 2. {2, 4, 4, 1} + lr = 0.7로 하면 잘 안 끝남.
-	// TODO
-	// 1. 데이터 분석 (노드마다 직선 그래프, epoch마다 error 그래프)
-	// 2. weight는 행렬 형식으로 파일에 저장(?)
-	// 3. 결과보고서 작성
 }
