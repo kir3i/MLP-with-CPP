@@ -80,10 +80,10 @@ int main(void) {
 	Model m = Model(x[0].size(), layers_dim, lr);
 
 	// 각종 정보 기록할 file 정의
-	ofstream lossFile(filename + "_loss.txt");
-	ofstream lineFile(filename + "_line.txt");
-	ofstream weightFile(filename + "_weight.txt");
-	ofstream dotFile(filename + "_dot.txt");
+	ofstream lossFile("../graph_draw/" + filename + "_loss.txt");
+	ofstream lineFile("../graph_draw/" + filename + "_line.txt");
+	ofstream weightFile("../graph_draw/" + filename + "_weight.txt");
+	ofstream dotFile("../graph_draw/" + filename + "_dot.txt");
 
 	// 테스트 수행
 	cout << "\n====================실행결과====================\n";
