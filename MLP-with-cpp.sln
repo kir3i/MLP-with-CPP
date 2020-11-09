@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.1062
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Perceptron", "Perceptron\Perceptron.vcxproj", "{940FBEFC-B4F1-40CE-82C0-0E7778E0F44F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MLP-with-cpp", "MLP-with-cpp\MLP-with-cpp.vcxproj", "{940FBEFC-B4F1-40CE-82C0-0E7778E0F44F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
